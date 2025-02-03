@@ -6,4 +6,14 @@ Used component.
 2. SSD1306 OLED I2C 128x64.
 3. si5351 module.
 4. Rotary encoder module.
+  
+  
+Pin connection  
+   
+rotary1 -> GP4  
+rotary2 -> GP3  
+rotarysw -> GP5  
+  
+scl -> GP27  
+sda -> GP26  
 
