@@ -210,6 +210,10 @@ async def catch_interrupt(pin):
                                 iFreq[iclk]=bytearray(sfre.encode("utf-8"))
                                 update_freq()
                                 update_si5351()
+                            else:
+                                print("Frequency out of range minimun: %d" % minfreq)
+                    else:
+                        print("Invalid command. Syntax: clk{0-1}{e|d}f{frequency}")
 
             await asyncio.sleep(0)
             
