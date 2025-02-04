@@ -7,6 +7,7 @@ import keypad
 import adafruit_ssd1306
 import busio
 import silicon5351
+import supervisor, re, sys
 
 # disble onboard neopixel
 pin = digitalio.DigitalInOut(NEOPIXEL)
@@ -61,6 +62,7 @@ iOut = 0
 iFreq = [bytearray(b"000002000"),bytearray(b"000002000"),bytearray(b"000002000")]
 iEna = [0,0,0]
 ikeydur = 0
+datpat=re.compile("clk(\d)(e|d)f([0-9]+)")
 
 
 def update_focus(bMark):
@@ -77,7 +79,14 @@ def update_focus(bMark):
     display.show()
 
 def update_freq():
-    global display,iFreq,iOut
+    global display,iFreq,iOut,iEna
+    # on/off
+    display.fill_rect(24,iOut*16,6,8,0)
+    if iEna[iOut]==0:
+        display.text('x',24,iOut*16,1)
+    else:
+        display.text('o',24,iOut*16,1)
+    # frequency
     display.fill_rect(36,iOut*16,80,8,0)
     display.text('%s' % iFreq[iOut].decode("utf-8"),36,iOut*16,1)
     display.fill_rect(0,48,128,16,0)    
@@ -103,7 +112,7 @@ async def catch_interrupt(pin):
     global last_position
     global position_diff
     global iMode,iFreq,iMenu,iMPos,iOut,iEna
-    global ikeydur,minfreq
+    global ikeydur,minfreq, datpat
     with keypad.Keys((pin,), value_when_pressed=False, pull=True) as keys:
         while True:
             if event := keys.events.get():
@@ -174,18 +183,34 @@ async def catch_interrupt(pin):
                             iFreq[iOut][iMPos-1]=ch
                             if iMPos>2:
                                 iFreq[iOut][iMPos-2]=ch2
-                        update_freq()
-                        update_si5351()                        
                     else:
                         iEna[iOut]=1-iEna[iOut]
-                        display.fill_rect(24,iOut*16,6,8,0)
-                        if iEna[iOut]==0:
-                            display.text('x',24,iOut*16,1)
-                        else:
-                            display.text('o',24,iOut*16,1)
-                        display.show()
-                        update_si5351()
-                        
+                    update_freq()
+                    update_si5351()
+            # serial command, clk{0-1}{e|d}f{frequency}
+            n=supervisor.runtime.serial_bytes_available
+            if n>0:
+                data = sys.stdin.read(n)
+                if data != "":
+                    sdata=datpat.match(data)
+                    if sdata:
+                        # clk
+                        iclk=int(sdata.group(1))
+                        if iclk>=0 and iclk<2:
+                            iOut=iclk
+                            # on/off
+                            if sdata.group(2)=="e":
+                                iEna[iclk]=1
+                            else:
+                                iEna[iclk]=0
+                            # set frequency
+                            ifre=int(sdata.group(3))
+                            if ifre>=minfreq and ifre<200000000:
+                                sfre="%09d" % ifre
+                                iFreq[iclk]=bytearray(sfre.encode("utf-8"))
+                                update_freq()
+                                update_si5351()
+
             await asyncio.sleep(0)
             
 def draw_screen():
