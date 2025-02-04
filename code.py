@@ -48,6 +48,7 @@ si5351=silicon5351.SI5351_I2C(i2c, crystal=25e6)
 si5351.setup_pll(pll=0, mul=pllmul)
 si5351.init_clock(output=0, pll=0)
 si5351.init_clock(output=1, pll=0)
+si5351.init_clock(output=2, pll=0)
 
 # init rotary encoder
 enc = rotaryio.IncrementalEncoder(rotary1, rotary2)
@@ -136,10 +137,10 @@ async def catch_interrupt(pin):
                 last_position = position
                 if iMode==0:
                     iOut+=position_diff
-                    if iOut>1:
+                    if iOut>2:
                         iOut=0
                     elif iOut<0:
-                        iOut=1
+                        iOut=2
                     display.fill_rect(0,0,8,64,0)
                     display.text('>',0,iOut*2*8,1)
                     display.show()
@@ -191,12 +192,13 @@ async def catch_interrupt(pin):
             n=supervisor.runtime.serial_bytes_available
             if n>0:
                 data = sys.stdin.read(n)
+                validcmd=True
                 if data != "":
                     sdata=datpat.match(data)
                     if sdata:
                         # clk
                         iclk=int(sdata.group(1))
-                        if iclk>=0 and iclk<2:
+                        if iclk>=0 and iclk<3:
                             iOut=iclk
                             # on/off
                             if sdata.group(2)=="e":
@@ -211,9 +213,14 @@ async def catch_interrupt(pin):
                                 update_freq()
                                 update_si5351()
                             else:
+                                validcmd=False
                                 print("Frequency out of range minimun: %d" % minfreq)
+                        else:
+                            validcmd=False
                     else:
-                        print("Invalid command. Syntax: clk{0-1}{e|d}f{frequency}")
+                        validcmd=False
+                if not validcmd:
+                    print("Syntax: clk{0-2}{e|d}f{frequency}")
 
             await asyncio.sleep(0)
             
@@ -222,7 +229,7 @@ def draw_screen():
     display.fill(0)
     display.text('  0 x %s' % iFreq[0].decode("utf-8"),0,0,1)
     display.text('  1 x %s' % iFreq[1].decode("utf-8"),0,16,1)
-    # display.text('  2 x %s' % iFreq[2].decode("utf-8"),0,32,1)    
+    display.text('  2 x %s' % iFreq[2].decode("utf-8"),0,32,1)    
     display.show()
 
             
