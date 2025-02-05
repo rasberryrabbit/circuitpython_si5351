@@ -9,11 +9,12 @@ import busio
 import silicon5351
 import supervisor, re, sys
 
-# disble onboard neopixel
-pin = digitalio.DigitalInOut(NEOPIXEL)
-pin.direction = digitalio.Direction.OUTPUT
-pixel_off = bytearray([0, 0, 0])
-neopixel_write.neopixel_write(pin, pixel_off)
+if board_id=="vcc_gnd_yd_rp2040":
+    # disble onboard neopixel
+    pin = digitalio.DigitalInOut(NEOPIXEL)
+    pin.direction = digitalio.Direction.OUTPUT
+    pixel_off = bytearray([0, 0, 0])
+    neopixel_write.neopixel_write(pin, pixel_off)
 
 # pin defines
 rotary1 = GP4
