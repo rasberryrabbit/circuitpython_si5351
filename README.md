@@ -18,8 +18,8 @@ scl -> GP27
 sda -> GP26  
 
 Serial command syntax:  
-clk{0-1}{e|d}f{frequency}  
-clk{0-} : clk selection  
+clk{0-2}{e|d}f{frequency}  
+clk{0-2} : clk selection  
 {e|d} : enable or disable output  
 f{frequency} : frequency  
   
