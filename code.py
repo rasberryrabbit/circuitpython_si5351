@@ -49,20 +49,23 @@ iMode = 0
 iMenu = 0
 iMPos = 0
 iOut = 0
-ipll = [0,0,0]
-ipllchg = [0,0,0]
 iFreq = [bytearray(b"000002000"),bytearray(b"000002000"),bytearray(b"000002000")]
 iEna = [0,0,0]
 ikeydur = 0
 datpat=re.compile("clk(\d)(e|d)f([0-9]+)(p[0-9])?")
+ipll = [0,0,0]
+ipllchg = [0,0,0]
+ipllmulchg = [0,0]
+ipllmul = [20,20]
+iminfreq = [ipllmul[0]*100,ipllmul[1]*100]
 
 # init display
 display = adafruit_ssd1306.SSD1306_I2C(128,64,i2c)
 
 # init si5351
 si5351=silicon5351.SI5351_I2C(i2c, crystal=25e6)
-si5351.setup_pll(pll=0, mul=pllmul)
-si5351.setup_pll(pll=1, mul=pllmul)
+si5351.setup_pll(pll=0, mul=ipllmul[0])
+si5351.setup_pll(pll=1, mul=ipllmul[1])
 si5351.init_clock(output=0, pll=ipll[0])
 si5351.init_clock(output=1, pll=ipll[1])
 si5351.init_clock(output=2, pll=ipll[2])
@@ -104,7 +107,13 @@ def update_freq():
     
 def update_si5351():
     global si5351,iOut,iEna,iFreq,display,ipll,ipllchg
-    
+    global ipllmulchg,ipllmul,iminfreq
+    # change pll multiplier
+    if ipllmulchg[ipll[iOut]]!=0:
+        si5351.setup_pll(pll=ipll[iOut], mul=ipllmul[ipll[iOut]])
+        iminfreq[ipll[iOut]]=100*ipllmul[ipll[iOut]]
+        ipllmulchg[ipll[iOut]]=0
+
     ifreq=int(iFreq[iOut].decode("utf-8"))
     try:
         if ipllchg[iOut]!=0:
@@ -143,7 +152,7 @@ async def catch_key(pin):
 async def process_rotary():
     global last_position,position_diff
     global iMode,iFreq,iMenu,iMPos,iOut,iEna
-    global minfreq, datpat, ipll, ipllchg
+    global minfreq, datpat, ipll, ipllchg, iminfreq
     while True:
         position = enc.position
         if last_position == None or position != last_position:
@@ -197,7 +206,7 @@ async def process_rotary():
                     iFreq[iOut][iMPos-1]=0x30+val
                     if iMPos>1:
                         iFreq[iOut][iMPos-2]=0x30+val2
-                    if int(iFreq[iOut].decode("utf-8"))<minfreq:
+                    if int(iFreq[iOut].decode("utf-8"))<iminfreq[ipll[iOut]]:
                         iFreq[iOut][iMPos-1]=ch
                         if iMPos>1:
                             iFreq[iOut][iMPos-2]=ch2
@@ -234,7 +243,7 @@ async def process_rotary():
                             update_si5351()
                         else:
                             validcmd=False
-                            print("Frequency out of range minimun: %d" % minfreq)
+                            print("Frequency out of range minimun: %d" % iminfreq[ipll[iOut]])
                         if sdata.group(4):
                             spll=sdata.group(4)[1:]
                             vpll=int(spll)
