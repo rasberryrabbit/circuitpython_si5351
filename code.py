@@ -227,7 +227,7 @@ async def process_rotary():
                             iEna[iclk]=0
                         # set frequency
                         ifre=int(sdata.group(3))
-                        if ifre>=minfreq and ifre<200000000:
+                        if ifre>=minfreq and ifre<300000000:
                             sfre="%09d" % ifre
                             iFreq[iclk]=bytearray(sfre.encode("utf-8"))
                             update_freq()
