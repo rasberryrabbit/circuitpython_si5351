@@ -92,7 +92,7 @@ def update_focus(bMark):
 
 def update_freq():
     global display,iFreq,iOut,iEna,ipll,clkstate
-    # on/off/invert/quad
+    # on/off/invert
     display.fill_rect(24,iOut*16,6,8,0)
     display.text(clkstate[iEna[iOut]],24,iOut*16,1)
     # frequency
