@@ -18,8 +18,9 @@ scl -> GP27
 sda -> GP26  
 
 Serial command syntax:  
-clk{0-2}{e|d}f{frequency}  
+clk{0-2}{e|d}f{frequency}p{0-1}  
 clk{0-2} : clk selection  
 {e|d|i} : enable or disable or invert output  
-f{frequency} : frequency  
+f{frequency} : frequency   
+p{0-1} : Select PLL 0-1  
   
