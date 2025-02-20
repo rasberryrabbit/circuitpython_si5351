@@ -52,12 +52,14 @@ iOut = 0
 iFreq = [bytearray(b"000002000"),bytearray(b"000002000"),bytearray(b"000002000")]
 iEna = [0,0,0]
 ikeydur = 0
-datpat=re.compile("clk(\d)(e|d)f([0-9]+)(p[0-9])?")
+datpat=re.compile("clk(\d)(e|d|i)f([0-9]+)(p[0-9])?")
 ipll = [0,0,0]
 ipllchg = [0,0,0]
 ipllmulchg = [0,0]
 ipllmul = [20,20]
 iminfreq = [ipllmul[0]*100,ipllmul[1]*100]
+clkstate = ["x","e","i","q"]
+
 
 # init display
 display = adafruit_ssd1306.SSD1306_I2C(128,64,i2c)
@@ -89,13 +91,10 @@ def update_focus(bMark):
     display.show()
 
 def update_freq():
-    global display,iFreq,iOut,iEna,ipll
-    # on/off
+    global display,iFreq,iOut,iEna,ipll,clkstate
+    # on/off/invert/quad
     display.fill_rect(24,iOut*16,6,8,0)
-    if iEna[iOut]==0:
-        display.text('x',24,iOut*16,1)
-    else:
-        display.text('o',24,iOut*16,1)
+    display.text(clkstate[iEna[iOut]],24,iOut*16,1)
     # frequency
     display.fill_rect(36,iOut*16,80,8,0)
     display.text('%s' % iFreq[iOut].decode("utf-8"),36,iOut*16,1)
@@ -117,7 +116,12 @@ def update_si5351():
     ifreq=int(iFreq[iOut].decode("utf-8"))
     try:
         if ipllchg[iOut]!=0:
-            si5351.init_clock(output=iOut, pll=ipll[iOut])
+            # invert
+            if iEna[iOut]==2:
+                si5351.init_clock(output=iOut, pll=ipll[iOut], quadrature=False, invert=True)
+            # normal
+            else:
+                si5351.init_clock(output=iOut, pll=ipll[iOut], quadrature=False, invert=False)
             ipllchg[iOut]=0
         si5351.set_freq_fixedpll(output=iOut, freq=ifreq)
         if iEna[iOut]==0:
@@ -211,13 +215,18 @@ async def process_rotary():
                         if iMPos>1:
                             iFreq[iOut][iMPos-2]=ch2
                 elif iMPos==0:
-                    iEna[iOut]=1-iEna[iOut]
+                    iEna[iOut]+=position_diff
+                    if iEna[iOut]>2:
+                        iEna[iOut]=0
+                    elif iEna[iOut]<0:
+                        iEna[iOut]=2
+                    ipllchg[iOut]=1
                 else:
                     ipll[iOut]=1-ipll[iOut]
                     ipllchg[iOut]=1
                 update_freq()
                 update_si5351()
-        # serial command, clk{0-1}{e|d}f{frequency}
+        # serial command, clk{0-1}{e|d|i}f{frequency}
         n=supervisor.runtime.serial_bytes_available
         if n>0:
             data = sys.stdin.read(n)
@@ -230,8 +239,11 @@ async def process_rotary():
                     if iclk>=0 and iclk<3:
                         iOut=iclk
                         # on/off
+                        ipllchg[iOut]=1
                         if sdata.group(2)=="e":
                             iEna[iclk]=1
+                        elif sdata.group(2)=='i':
+                            iEna[iclk]=2
                         else:
                             iEna[iclk]=0
                         # set frequency
@@ -258,7 +270,7 @@ async def process_rotary():
                 else:
                     validcmd=False
             if not validcmd:
-                print("Syntax: clk{0-2}{e|d}f{frequency}p{0-1}")
+                print("Syntax: clk{0-2}{e|d|i}f{frequency}p{0-1}")
         await asyncio.sleep(0)
             
 def draw_screen():
